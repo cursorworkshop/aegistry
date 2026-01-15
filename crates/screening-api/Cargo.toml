@@ -1,0 +1,40 @@
+[package]
+name = "screening-api"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+aegistry-core = { path = "../core" }
+anyhow = { workspace = true }
+argon2 = { workspace = true }
+axum = { workspace = true }
+axum-extra = { workspace = true }
+chrono = { workspace = true }
+csv = { workspace = true }
+futures = { workspace = true }
+ingest = { path = "../ingest" }
+matching-core = { path = "../matching-core" }
+metrics = { workspace = true }
+metrics-exporter-prometheus = { workspace = true }
+rand = { workspace = true }
+reqwest = { workspace = true }
+rusqlite = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+tantivy = { workspace = true }
+tokio = { workspace = true }
+tokio-stream = { workspace = true }
+tower = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+uuid = { workspace = true }
+validator = { workspace = true }
+utoipa = { version = "4.2", features = ["axum_extras", "chrono"] }
+# utoipa-swagger-ui disabled - version conflicts with utoipa 4.x
+hex = "0.4"
+sha2 = "0.10"
+
+[dev-dependencies]
+tempfile = "3"
+tower = "0.5"
