@@ -1,29 +1,29 @@
-# MVP API Bring-Up — Implementation Plan
+# MVP API Bring-Up - Implementation Plan
 **Overall Progress:** 50%
 
 ## Tasks
-- [ ] 🟨 Step 1: Laat de API starten op een vrije poort
-  - [ ] 🟩 Subtask 1: Zet default `BIND_ADDR` op een vrije poort (bijv. 127.0.0.1:3100) en verbeter bind-foutmelding
-  - [ ] 🟥  🔎 USER: start met `BIND_ADDR=127.0.0.1:3100 cargo run -p screening-api` en bevestig dat de server “listening” logt
+- [ ] Step 1: Start the API on a free port
+  - [ ] Subtask 1: Set default `BIND_ADDR` to a free port (e.g. 127.0.0.1:3100) and improve bind error message
+  - [ ] USER: start with `BIND_ADDR=127.0.0.1:3100 cargo run -p screening-api` and confirm that the server logs "listening"
 
-- [ ] 🟨 Step 2: Bewijs dat endpoints werken op nieuwe poort
-  - [ ] 🟩 Subtask 1: Werk usage snippet bij (curl) en controleer `/health` en `/v1/persons/screen` op JSON 200-responses
-  - [ ] 🟥  🔎 USER: curl `http://127.0.0.1:3100/health` en `http://127.0.0.1:3100/v1/persons/screen` (met body) en bevestig status 200 en JSON met `request_id`
+- [ ] Step 2: Prove that endpoints work on the new port
+  - [ ] Subtask 1: Update usage snippet (curl) and verify `/health` and `/v1/persons/screen` return JSON 200 responses
+  - [ ] USER: curl `http://127.0.0.1:3100/health` and `http://127.0.0.1:3100/v1/persons/screen` (with body) and confirm status 200 and JSON with `request_id`
 
-- [ ] 🟨 Step 3: Documentatie en changelog bijwerken
-  - [ ] 🟩 Subtask 1: Noteer poortwijziging/quickstart in `docs/changelog.md` en (indien nodig) `docs/refactor.md`
-  - [ ] 🟥  🔎 USER: open de genoemde docs en bevestig dat de nieuwe run-instructies en poort staan genoteerd
+- [ ] Step 3: Update documentation and changelog
+  - [ ] Subtask 1: Note port change/quickstart in `docs/changelog.md` and (if needed) `docs/refactor.md`
+  - [ ] USER: open the mentioned docs and confirm that the new run instructions and port are noted
 
 ## Final Verification Round (present in chat when implementation is done)
-1. 🟥🔎 USER: start server op 127.0.0.1:3100 en bevestig “listening”-log
-2. 🟥🔎 USER: curl `/health` en `/v1/persons/screen` op 127.0.0.1:3100 met geldige body en zie JSON 200 met `request_id`
-3. 🟥🔎 USER: lees docs/changelog (en refactor indien toegevoegd) en bevestig dat poort/quickstart vermeld zijn
+1. USER: start server on 127.0.0.1:3100 and confirm "listening" log
+2. USER: curl `/health` and `/v1/persons/screen` on 127.0.0.1:3100 with valid body and see JSON 200 with `request_id`
+3. USER: read docs/changelog (and refactor if added) and confirm that port/quickstart are mentioned
 
 ## Operational Checklist
-- Docs: update `docs/refactor.md` (wat / waarom / impact / verificatie)
-- Indien UI gewijzigd: `npm run build` → `rsync …/dist/assets/ …` → `python3 tools/sync_static_aliases.py` → curl-checks (index.js/.css)
-- Containers vernieuwen: `sudo docker compose build app && sudo docker compose up -d`
-- Functionele sanity: login → kritieke flow → laatst aangepaste feature
+- Docs: update `docs/refactor.md` (what / why / impact / verification)
+- If UI changed: `npm run build` -> `rsync .../dist/assets/ ...` -> `python3 tools/sync_static_aliases.py` -> curl checks (index.js/.css)
+- Refresh containers: `sudo docker compose build app && sudo docker compose up -d`
+- Functional sanity: login -> critical flow -> last modified feature
 
 ## Non-Goals
-- Geen verdere ingest/parser/matching-uitbreidingen nu; alleen draaien en documenteren van de MVP API.
+- No further ingest/parser/matching extensions now; only run and document the MVP API.
