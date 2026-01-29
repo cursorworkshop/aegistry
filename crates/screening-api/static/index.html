@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Aegistry Screening API</title>
+</head>
+<body>
+<h1>Aegistry Screening API</h1>
+
+<h2>Person Screening</h2>
+<form id="personForm">
+<table>
+<tr><td>First Name:</td><td><input type="text" id="firstName" required></td></tr>
+<tr><td>Last Name:</td><td><input type="text" id="lastName" required></td></tr>
+<tr><td>Country (ISO):</td><td><input type="text" id="personCountry" maxlength="2"></td></tr>
+<tr><td>Date of Birth:</td><td><input type="date" id="personDOB"></td></tr>
+<tr><td></td><td><button type="submit">Screen Person</button></td></tr>
+</table>
+</form>
+<div id="personResults"></div>
+
+<h2>Entity Screening</h2>
+<form id="entityForm">
+<table>
+<tr><td>Name:</td><td><input type="text" id="entityName" required></td></tr>
+<tr><td>Country (ISO):</td><td><input type="text" id="entityCountry" maxlength="2"></td></tr>
+<tr><td></td><td><button type="submit">Screen Entity</button></td></tr>
+</table>
+</form>
+<div id="entityResults"></div>
+
+<h2>Batch Screening</h2>
+<form id="batchForm">
+<table>
+<tr><td>Records (JSON):</td><td><textarea id="batchRecords" rows="5" cols="50" required>[{"name": "Vladimir Putin", "country": "RU"}, {"name": "Sergey Lavrov", "country": "RU"}]</textarea></td></tr>
+<tr><td></td><td><button type="submit">Submit Batch</button></td></tr>
+</table>
+</form>
+<div id="batchResults"></div>
+
+<h2>Monitoring</h2>
+<form id="monitoringForm">
+<table>
+<tr><td>Reference ID:</td><td><input type="text" id="refId" required></td></tr>
+<tr><td>Name:</td><td><input type="text" id="monName" required></td></tr>
+<tr><td>Country (ISO):</td><td><input type="text" id="monCountry" maxlength="2"></td></tr>
+<tr><td>DOB Year:</td><td><input type="number" id="monDOB" min="1900" max="2100"></td></tr>
+<tr><td>Callback URL:</td><td><input type="url" id="callbackUrl"></td></tr>
+<tr><td></td><td><button type="submit">Add to Monitoring</button></td></tr>
+</table>
+</form>
+<div id="monitoringResults"></div>
+<button onclick="listMonitoring()">List Monitored Subjects</button>
+<div id="monitoringList"></div>
+
+<h2>Metrics</h2>
+<button onclick="loadMetrics()">Refresh Metrics</button>
+<pre id="metrics"></pre>
+
+<script>
+const API_KEY = 'test-api-key';
+const API_BASE = window.location.origin;
+
+function formatTimestamp(ts) {
+    if (!ts) return 'N/A';
+    const d = new Date(ts);
+    return d.toLocaleString();
+}
+
+function formatLatency(start) {
+    const ms = Date.now() - start;
+    return ms < 1000 ? ms + 'ms' : (ms / 1000).toFixed(2) + 's';
+}
+
+function displayHits(hits, containerId) {
+    const container = document.getElementById(containerId);
+    if (!hits || hits.length === 0) {
+        container.innerHTML = '<p>No hits found.</p>';
+        return;
+    }
+    
+    let html = '<table border="1"><tr><th>Subject ID</th><th>Matched Name</th><th>Source</th><th>Score</th><th>Risk Level</th><th>Explanation</th></tr>';
+    hits.forEach(hit => {
+        const riskColor = hit.risk_level === 'Hit' ? 'red' : hit.risk_level === 'Review' ? 'orange' : 'green';
+        html += '<tr>';
+        html += '<td>' + escapeHtml(hit.subject_id) + '</td>';
+        html += '<td>' + escapeHtml(hit.matched_name) + '</td>';
+        html += '<td>' + escapeHtml(hit.source) + '</td>';
+        html += '<td>' + (hit.score * 100).toFixed(1) + '%</td>';
+        html += '<td style="color:' + riskColor + '">' + hit.risk_level + '</td>';
+        html += '<td><ul>';
+        if (hit.explanation) {
+            hit.explanation.forEach(exp => {
+                html += '<li>' + escapeHtml(exp) + '</li>';
+            });
+        }
+        html += '</ul></td>';
+        html += '</tr>';
+    });
+    html += '</table>';
+    container.innerHTML = html;
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+document.getElementById('personForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const start = Date.now();
+    const container = document.getElementById('personResults');
+    container.innerHTML = '<p>Loading...</p>';
+    
+    const data = {
+        first_name: document.getElementById('firstName').value,
+        last_name: document.getElementById('lastName').value,
+        country: document.getElementById('personCountry').value || null,
+        date_of_birth: document.getElementById('personDOB').value || null
+    };
+    
+    try {
+        const res = await fetch(API_BASE + '/v1/persons/screen', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Api-Key': API_KEY
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await res.json();
+        const latency = formatLatency(start);
+        
+        let html = '<h3>Results (latency: ' + latency + ')</h3>';
+        html += '<p>Request ID: ' + escapeHtml(result.request_id) + '</p>';
+        html += '<p>Checked at: ' + formatTimestamp(result.checked_at) + '</p>';
+        
+        if (result.hits) {
+            displayHits(result.hits, 'personResults');
+            container.innerHTML = html + container.innerHTML;
+        } else {
+            container.innerHTML = html + '<p>Error: ' + escapeHtml(JSON.stringify(result)) + '</p>';
+        }
+    } catch (err) {
+        container.innerHTML = '<p>Error: ' + escapeHtml(err.message) + '</p>';
+    }
+});
+
+document.getElementById('entityForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const start = Date.now();
+    const container = document.getElementById('entityResults');
+    container.innerHTML = '<p>Loading...</p>';
+    
+    const data = {
+        name: document.getElementById('entityName').value,
+        country: document.getElementById('entityCountry').value || null
+    };
+    
+    try {
+        const res = await fetch(API_BASE + '/v1/entities/screen', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Api-Key': API_KEY
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await res.json();
+        const latency = formatLatency(start);
+        
+        let html = '<h3>Results (latency: ' + latency + ')</h3>';
+        html += '<p>Request ID: ' + escapeHtml(result.request_id) + '</p>';
+        html += '<p>Checked at: ' + formatTimestamp(result.checked_at) + '</p>';
+        
+        if (result.hits) {
+            displayHits(result.hits, 'entityResults');
+            container.innerHTML = html + container.innerHTML;
+        } else {
+            container.innerHTML = html + '<p>Error: ' + escapeHtml(JSON.stringify(result)) + '</p>';
+        }
+    } catch (err) {
+        container.innerHTML = '<p>Error: ' + escapeHtml(err.message) + '</p>';
+    }
+});
+
+document.getElementById('batchForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const start = Date.now();
+    const container = document.getElementById('batchResults');
+    container.innerHTML = '<p>Loading...</p>';
+    
+    let records;
+    try {
+        records = JSON.parse(document.getElementById('batchRecords').value);
+    } catch (err) {
+        container.innerHTML = '<p>Error: Invalid JSON - ' + escapeHtml(err.message) + '</p>';
+        return;
+    }
+    
+    try {
+        const res = await fetch(API_BASE + '/v1/batch', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Api-Key': API_KEY
+            },
+            body: JSON.stringify({ records })
+        });
+        
+        const result = await res.json();
+        const latency = formatLatency(start);
+        
+        let html = '<h3>Batch Job Created (latency: ' + latency + ')</h3>';
+        html += '<p>Job ID: ' + escapeHtml(result.job_id) + '</p>';
+        html += '<p>Status: ' + escapeHtml(result.status) + '</p>';
+        html += '<p>Total Records: ' + result.total_records + '</p>';
+        html += '<p>Created at: ' + formatTimestamp(result.created_at) + '</p>';
+        html += '<button onclick="checkBatchStatus(\'' + result.job_id + '\')">Check Status</button>';
+        html += '<button onclick="getBatchResults(\'' + result.job_id + '\')">Get Results</button>';
+        container.innerHTML = html;
+    } catch (err) {
+        container.innerHTML = '<p>Error: ' + escapeHtml(err.message) + '</p>';
+    }
+});
+
+function checkBatchStatus(jobId) {
+    fetch(API_BASE + '/v1/batch/' + jobId, {
+        headers: { 'X-Api-Key': API_KEY }
+    })
+    .then(res => res.json())
+    .then(result => {
+        const container = document.getElementById('batchResults');
+        let html = '<h3>Batch Status</h3>';
+        html += '<p>Job ID: ' + escapeHtml(result.job_id) + '</p>';
+        html += '<p>Status: ' + escapeHtml(result.status) + '</p>';
+        html += '<p>Processed: ' + result.processed_records + ' / ' + result.total_records + '</p>';
+        html += '<p>Created at: ' + formatTimestamp(result.created_at) + '</p>';
+        if (result.status === 'Processing') {
+            html += '<button onclick="setTimeout(() => checkBatchStatus(\'' + jobId + '\'), 1000)">Refresh</button>';
+        }
+        container.innerHTML = html;
+    })
+    .catch(err => {
+        document.getElementById('batchResults').innerHTML = '<p>Error: ' + escapeHtml(err.message) + '</p>';
+    });
+}
+
+function getBatchResults(jobId) {
+    fetch(API_BASE + '/v1/batch/' + jobId + '/results', {
+        headers: { 'X-Api-Key': API_KEY }
+    })
+    .then(res => res.json())
+    .then(results => {
+        const container = document.getElementById('batchResults');
+        let html = '<h3>Batch Results</h3>';
+        results.forEach((result, idx) => {
+            html += '<h4>Record ' + (idx + 1) + ': ' + escapeHtml(result.name) + '</h4>';
+            if (result.hits && result.hits.length > 0) {
+                html += '<table border="1"><tr><th>Subject ID</th><th>Matched Name</th><th>Score</th><th>Risk</th></tr>';
+                result.hits.forEach(hit => {
+                    html += '<tr>';
+                    html += '<td>' + escapeHtml(hit.subject_id) + '</td>';
+                    html += '<td>' + escapeHtml(hit.matched_name) + '</td>';
+                    html += '<td>' + (hit.score * 100).toFixed(1) + '%</td>';
+                    html += '<td>' + hit.risk_level + '</td>';
+                    html += '</tr>';
+                });
+                html += '</table>';
+            } else {
+                html += '<p>No hits</p>';
+            }
+        });
+        container.innerHTML = html;
+    })
+    .catch(err => {
+        document.getElementById('batchResults').innerHTML = '<p>Error: ' + escapeHtml(err.message) + '</p>';
+    });
+}
+
+document.getElementById('monitoringForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const start = Date.now();
+    const container = document.getElementById('monitoringResults');
+    container.innerHTML = '<p>Loading...</p>';
+    
+    const data = {
+        reference_id: document.getElementById('refId').value,
+        name: document.getElementById('monName').value,
+        country: document.getElementById('monCountry').value || null,
+        dob_year: document.getElementById('monDOB').value ? parseInt(document.getElementById('monDOB').value) : null,
+        callback_url: document.getElementById('callbackUrl').value || null
+    };
+    
+    try {
+        const res = await fetch(API_BASE + '/v1/monitoring', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Api-Key': API_KEY
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await res.json();
+        const latency = formatLatency(start);
+        
+        let html = '<h3>Monitoring Added (latency: ' + latency + ')</h3>';
+        html += '<p>Status: ' + escapeHtml(result.status) + '</p>';
+        html += '<p>Reference ID: ' + escapeHtml(result.reference_id) + '</p>';
+        html += '<p>Message: ' + escapeHtml(result.message) + '</p>';
+        container.innerHTML = html;
+    } catch (err) {
+        container.innerHTML = '<p>Error: ' + escapeHtml(err.message) + '</p>';
+    }
+});
+
+function listMonitoring() {
+    fetch(API_BASE + '/v1/monitoring', {
+        headers: { 'X-Api-Key': API_KEY }
+    })
+    .then(res => res.json())
+    .then(entries => {
+        const container = document.getElementById('monitoringList');
+        if (!entries || entries.length === 0) {
+            container.innerHTML = '<p>No monitored subjects</p>';
+            return;
+        }
+        
+        let html = '<h3>Monitored Subjects</h3><table border="1"><tr><th>Reference ID</th><th>Name</th><th>Country</th><th>Last Screened</th><th>Callback URL</th></tr>';
+        entries.forEach(entry => {
+            html += '<tr>';
+            html += '<td>' + escapeHtml(entry.reference_id) + '</td>';
+            html += '<td>' + escapeHtml(entry.name) + '</td>';
+            html += '<td>' + (entry.country || 'N/A') + '</td>';
+            html += '<td>' + formatTimestamp(entry.last_screened_at) + '</td>';
+            html += '<td>' + (entry.callback_url || 'N/A') + '</td>';
+            html += '</tr>';
+        });
+        html += '</table>';
+        container.innerHTML = html;
+    })
+    .catch(err => {
+        document.getElementById('monitoringList').innerHTML = '<p>Error: ' + escapeHtml(err.message) + '</p>';
+    });
+}
+
+function loadMetrics() {
+    fetch(API_BASE + '/metrics')
+    .then(res => res.text())
+    .then(text => {
+        document.getElementById('metrics').textContent = text;
+    })
+    .catch(err => {
+        document.getElementById('metrics').textContent = 'Error: ' + err.message;
+    });
+}
+
+// Load metrics on page load
+loadMetrics();
+</script>
+</body>
+</html>
+
+
+
